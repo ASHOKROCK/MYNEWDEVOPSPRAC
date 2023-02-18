@@ -1,0 +1,240 @@
+---
+- name: Creating a 
+  hosts: localhost
+  become: true
+  become_method: sudo
+  gather_facts: true
+  connection: no
+  vars:
+    - my_param : 100
+    - my_param :  0
+    
+  gather_facts: yes
+  tasks:
+    - name: Creating a file
+      file:
+        path: /root/myfile
+        state: touch
+        owner: root
+        group: root
+        mode: '0777'
+      register: dir
+    - name: Creating a another file
+      file:
+        path: /root/mycustomdir
+        state: directory
+        owner: root
+        group: root
+        mode: '0777'
+          #when: dir.stat.exists
+    - name: create a user
+      user:
+        name: mysmith
+        create_home: yes
+        uid: 1060
+        group: root
+        shell: /bin/bash
+        comment: "THIS IS A MY ANOTHER DEV USER"
+        generate_ssh_key: yes
+        ssh_key_bits: 2048
+        ssh_key_type: rsa
+    - name: uninstall a package
+      yum:
+        name: "{{item}}"
+        state: absent
+      with_items:
+        - httpd
+        - nginx
+    - name: Install a Package
+      yum:
+        name: "{{item}}"
+        state: installed
+      loop:
+        - java-1.8.0-openjdk
+        - git
+        - gcc
+        - make
+        - httpd
+    - name: Enable a package
+      service:
+        name: httpd
+        enabled: yes
+    - name: Start a package
+      service:
+        name: httpd
+        state: started
+      when: ansible_facts['os_family']=="RedHat"
+    - name: Check the status of package
+      shell: systemctl status httpd
+    - name: check the java and git and webserver
+      shell: java -version && git --version && httpd -v
+      ignore_errors: yes
+    - name: copy a static website content
+      copy:
+        src: index.html
+        dest: /var/www/html/index.html
+        owner: root
+        group: root
+        mode: '0777'
+      when:
+        - ansible_user_shell == "/bin/bash"
+    - name: add a user to a passwd file
+      htpasswd:
+        path: /etc/passwd
+        name: mysmith1
+        password: 'Ashok@6629'
+        owner: root
+        group: root
+        mode: 0777
+      ignore_errors: yes
+    - name: Now Checking a status of httpd
+      shell: rpm -q httpd | head -n 1
+      register: result
+    - name: Now checking a fact
+      set_fact:
+        result: "{{ result.stdout }}"
+    - name:
+      debug:
+        msg: "Is the httpd installed: {{ result }}"
+    - name: Checking a httpd is present or not
+      yum:
+        name: httpd
+        state: present
+      when: result | regex_search("not installed")
+    - name: sleep for 300 seconds and continue with play
+      wait_for:
+        timeout: 20
+      delegate_to: localhost
+    - name: Wait for port 80 to become open on the host
+      wait_for:
+        host: 127.0.0.1
+        port: 80
+        delay: 10
+    - name: create a group
+      group:
+        name: mynewcloud1
+        gid: 1040
+    - name: checking stats of packages
+      set_stats:
+        data:
+          packages_installed: 31
+        per_host: yes
+    - name: Now Pausing a play
+      pause:
+        seconds: 5
+    - name: debug a message
+      debug:
+        msg: System {{ inventory_hostname }} has uuid {{ ansible_product_uuid }}
+    - name: debug a another message
+      debug:
+         msg: System {{ inventory_hostname }} has gateway {{ ansible_default_ipv4.gateway }}
+      when: ansible_default_ipv4.gateway is defined
+    - name: Check The server uptime
+      shell: /usr/bin/uptime
+      register: result
+    - name: Now check The result
+      debug:
+        var: result
+        verbosity: 2
+    - name: Copy a template
+      template:
+        src: index.j2
+        dest: /var/www/html/index.html
+        owner: root
+        group: root
+        mode: '0777'
+    
+    - name: Checking a condition
+      assert: 
+        that: "ansible_os_family == 'RedHat'" 
+    - name: Testing first variable (http_port)
+      debug:
+        msg: "The HTTP PORT is running on 80"
+    - name: Testing second variable (pkg)
+      debug:
+        msg: "The package name is httpd is installed" 
+    - name: After version 2.7 both 
+      assert:
+        that:
+          - my_param <= 100
+          - my_param >= 0
+        fail_msg: "'my_param' must be between 0 and 100"
+        success_msg: "'my_param' is between 0 and 100"
+
+    - name: Create a File New
+      file:
+        path: /root/myfilenew
+        state: touch
+        owner: root
+        group: root
+        mode: '0777'
+        modification_time: 'preserve'
+        access_time: 'preserve'
+    
+    - name: Install a packages
+      yum:
+        name: ['wget','zip','gcc','htop','unzip']
+        state: installed
+    - name: Create a File New
+      file:
+        path: /root/myfilenew
+        state: touch
+        owner: root
+        group: root
+        mode: '0777'
+        modification_time: 'now'
+        access_time: 'now'
+    - name: Copy a files
+      copy:
+        src: "{{item.src}}"
+        dest: "{{item.dest}}"
+        owner: "{{item.owner}}"
+        group: "{{item.group}}"
+        mode: "{{item.mode}}"
+      loop:
+        - {"src":"file4.txt","dest":"mynewdir","owner":"root","group":"root","mode":"0777"}
+        - {"src":"file5.txt","dest":"mynewdir","owner":"root","group":"root","mode":"0777"}
+        - {"src":"file6.txt","dest":"mynewdir","owner":"root","group":"root","mode":"0777"}
+        - {"src":"file7.txt","dest":"mynewdir","owner":"root","group":"root","mode":"0777"}
+    - name: Copy a files
+      copy:
+        src: "{{item.src}}"
+        dest: "{{item.dest}}"
+        owner: "{{item.owner}}"
+        group: "{{item.group}}"
+        mode: "{{item.mode}}"
+      loop:
+        - {"src":"index1.html","dest":"/var/www/html/index.html","owner":"root","group":"root","mode":"0777"}
+        - {"src":"index2.html","dest":"/var/www/html/index.html","owner":"root","group":"root","mode":"0777"}
+        - {"src":"index3.html","dest":"/var/www/html/index.html","owner":"root","group":"root","mode":"0777"}
+        - {"src":"index4.html","dest":"/var/www/html/index.html","owner":"root","group":"root","mode":"0777"}
+    - name: Create a file
+      file:
+        path: "{{item.path}}"
+        state: "{{item.state}}"
+        owner: "{{item.owner}}"
+        group: "{{item.group}}"
+        mode: "{{item.mode}}"
+      loop:
+        - {"path":"/root/myanotherfile1","state":"touch","owner":"root","group":"root","mode":"0777"}
+        - {"path":"/root/myanotherfile2","state":"touch","owner":"root","group":"root","mode":"0777"}
+        - {"path":"/root/myanotherfile3","state":"touch","owner":"root","group":"root","mode":"0777"}
+        - {"path":"/root/myanotherfile4","state":"touch","owner":"root","group":"root","mode":"0777"}
+    
+    - name: Create a file
+      file:
+        path: "{{item.path}}"
+        state: "{{item.state}}"
+        owner: "{{item.owner}}"
+        group: "{{item.group}}"
+        mode: "{{item.mode}}"
+      loop:
+        - {"path":"/root/mycustomdir1","state":"directory","owner":"root","group":"root","mode":"0777"}
+        - {"path":"/root/mycustomdir2","state":"directory","owner":"root","group":"root","mode":"0777"}
+        - {"path":"/root/mycustomdir3","state":"directory","owner":"root","group":"root","mode":"0777"}
+        - {"path":"/root/mycustomdir4","state":"directory","owner":"root","group":"root","mode":"0777"}
+
+          
+
+
+
