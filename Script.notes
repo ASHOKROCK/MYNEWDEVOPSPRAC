@@ -1,0 +1,158 @@
+List of command bash keywords and built in commands
+JOB_SPEC &
+(( expression ))
+. filename
+[[:]]
+[ arg... ]
+expression
+alias
+bg
+bind
+builtin
+caller
+case
+command
+compgen
+complete
+continue
+declare
+dirs
+disown
+echo
+enable
+eval
+exec
+exit
+export
+false
+fc
+fg
+for
+getopts
+hash
+help
+history
+if
+jobs
+kill
+let
+local
+logout
+popd
+printf
+pushd
+pwd
+read
+readonly
+return
+select
+set
+shift
+shopt
+source
+suspend
+test
+time
+times
+trap
+true
+type
+typeset
+ulimit
+umask
+unalias
+unset
+until
+variables
+while
+? The bash shell • Home • The role of shells in the Linux environment ?
+
+Login
+User can login locally into the console when in runlevel # 3 or graphically when in runlevel # 5 (the level numbers may differ depending on the distribution). In both cases you need to provide username and password. Bash uses the following initialization and start-up files:
+
+/etc/profile - The systemwide initialization file, executed for login shells.
+/etc/bash.bashrc - The systemwide per-interactive-shell startup file. This is a non-standard file which may not exist on your distribution. Even if it exists, it will not be sourced unless it is done explicitly in another start-up file.
+/etc/bash.logout - The systemwide login shell cleanup file, executed when a login shell exits.
+$HOME/.bash_profile - The personal initialization file, executed for login shells.
+$HOME/.bashrc - The individual per-interactive-shell startup file.
+$HOME/.bash_logout - The individual login shell cleanup file, executed when a login shell exits.
+$HOME/.inputrc - Individual readline initialization file.
+
+Login Shell
+Login shells are first shell started when you log in to the system. Login shells set environment which is exported to non-login shells. Login shell calls the following when a user logs in:
+
+/etc/profile runs first when a user logs in runlevel # 3 (the level numbers may differ depending on the distribution).
+/etc/profile.d
+$HOME/.bash_profile, $HOME/.bash_login, and $HOME/.profile, runs second when a user logs in in that order. $HOME/.bash_profile calls $HOME/.bashrc, which calls /etc/bashrc (/etc/bash.bashrc).
+
+
+CTRL + L : Clear the screen.
+CTRL + W : Delete the word starting at cursor.
+CTRL + U : Clear the line i.e. Delete all words from command line.
+Up and Down arrow keys : Recall commands (see command history).
+Tab : Auto-complete files, directory, command names and much more.
+CTRL + R : Search through previously used commands (see command history)
+CTRL + C : Cancel currently running commands.
+CTRL + T : Swap the last two characters before the cursor.
+ESC + T : Swap the last two words before the cursor.
+CTRL + H : Delete the letter starting at cursor
+
+BASH_VERSION	Holds the version of this instance of bash.	echo $BASH_VERSION
+HOSTNAME	The name of the your computer.	echo $HOSTNAME
+CDPATH	The search path for the cd command.	echo $CDPATH
+HISTFILE	The name of the file in which command history is saved.	echo $HISTFILE
+HISTFILESIZE	The maximum number of lines contained in the history file.	echo $HISTFILESIZE
+HISTSIZE	The number of commands to remember in the command history. The default value is 500.	echo $HISTSIZE
+HOME	The home directory of the current user.	echo $HOME
+IFS	The Internal Field Separator that is used for word splitting after expansion and to split lines into words with the read builtin command. The default value is <space><tab><newline>.	echo $IFS
+LANG	Used to determine the locale category for any category not specifically selected with a variable starting with LC_.	echo $LANG
+PATH	The search path for commands. It is a colon-separated list of directories in which the shell looks for commands.	echo $PATH
+PS1	Your prompt settings.	echo $PS1
+TMOUT	The default timeout for the read builtin command. Also in an interactive shell, the value is interpreted as the number of seconds to wait for input after issuing the command. If not input provided it will logout user.	echo $TMOUT
+TERM	Your login terminal type.	echo $TERM
+export TERM=vt100
+SHELL	Set path to login shell.	echo $SHELL
+DISPLAY	Set X display name	echo $DISPLAY
+export DISPLAY=:0.1
+EDITOR	Set name of default text editor.
+
+printf Format Directives
+From the printf man page:
+
+  FORMAT controls the output as in C printf.  Interpreted sequences are:
+
+       \"     double quote
+
+       \NNN   character with octal value NNN (1 to 3 digits)
+
+       \\     backslash
+
+       \a     alert (BEL)
+
+       \b     backspace
+
+       \c     produce no further output
+
+       \f     form feed
+
+       \n     new line
+
+       \r     carriage return
+
+       \t     horizontal tab
+
+       \v     vertical tab
+
+       \xHH   byte with hexadecimal value HH (1 to 2 digits)
+
+       \uHHHH Unicode (ISO/IEC 10646) character with hex value HHHH (4 digits)
+
+       \UHHHHHHHH
+              Unicode character with hex value HHHHHHHH (8 digits)
+
+       %%     a single %
+
+       %b     ARGUMENT as a string with '\' escapes interpreted, except that octal escapes are of the form 
+              \0 or \0NNN and all C format specifications ending with one of diouxXfeEgGcs, 
+              with ARGUMENTs converted to proper type first. Variable widths are handled.
+
