@@ -1,0 +1,28 @@
+FROM node:16-alpine AS build
+COPY .  .
+RUN mkdir /app
+WORKDIR /app
+COPY . /app
+ENV NODE_ENV=production
+LABEL Team=Dev
+USER root
+COPY app.json /app
+
+
+FROM build
+COPY --from=build .  .
+RUN npm install --production
+
+#Running a new build
+FROM node:14-alpine AS builder
+COPY --from=build package-lock.json /app
+COPY server.js /app
+COPY package.json /app
+COPY . .
+RUN npm  build
+
+#now running another builder instead
+FROM builder
+COPY --from=builder index.js /app
+EXPOSE 3000
+CMD ["node","index.js"]
