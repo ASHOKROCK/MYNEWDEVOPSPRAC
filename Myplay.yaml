@@ -1,0 +1,423 @@
+---
+- hosts: all
+  become_method: sudo
+  remote_user: root
+  gather_facts: yes
+  tasks:
+    - name: Change ownwership of existing file
+      file:
+        path: /opt/ashok/myfile
+        owner: root
+        group: root
+        mode: '0700'
+    - name: specify a symbolic file
+      file:
+        src: /opt/ashok/myfile
+        dest: /root/myashok
+        owner: root
+        group: root
+        mode: '0775'
+        state: link
+    - name: Touch a file to remote servers
+      file:
+        path: /opt/mynewfile
+        state: touch
+        mode: u=rwx,g=r,o=r
+    - name: Touch a file, using symbolic modes to set the permissions (equivalent to 0644)
+      file:
+        path: /opt/mynewfile
+        state: touch
+        mode: u=rwx,g=rw,o+rwx
+    - name: Touch again the same file, but dont change times this makes the task idempotent
+      file:
+        path: /opt/ashok/mysecondfile
+        state: touch
+        mode: u+rw,g-wx,o-rwx
+        modification_time: preserve
+        access_time: preserve
+    - name: Create a directory if it does not exist
+      file:
+        path: /opt/myhome/
+        state: directory
+        mode: '0755'
+    - name: Update modification and access time of given file
+      file:
+        path: /opt/ashok/mysecondfile
+        state: file
+        modification_time: now
+        access_time: now
+    - name: Set access time based on seconds from epoch value
+      file:
+        path: /opt/ashok/myfile
+        state: file
+        access_time: now
+    - name: Recursively change ownership of a directory
+      file:
+        path: /opt/myhome/
+        state: directory
+        recurse: yes
+        owner: ansadmin
+        group: ansadmin
+    - name: Remove file (delete file)
+      file:
+        path: /opt/mynewfile
+        state: absent
+    - name: Recursively remove directory
+      file:
+        path: /opt/myhome/
+        state: absent
+    - name: Change ownership of file
+      file:
+        path: /opt/ashok/mysecondfile
+        owner: ansadmin
+        group: ansadmin
+        mode: '0777'
+    - stat:
+        path: /opt/ashok/myfile
+      register: st
+    - fail:
+        msg: "Whoops! file ownership has changed"
+      when: st.stat.pw_name != 'root'
+    - stat:
+        path: /root/ashok
+      register: sym
+    - debug:
+        msg: "islnk is defined (path must exist)"
+      when: sym.stat.islnk is defined
+    - debug:
+        msg: "islnk isn't defined (path doesn't exist)"
+      when: sym.stat.islnk is not defined
+    - debug:
+        msg: "Path exists and is a symlink"
+      when: sym.stat.islnk is defined and sym.stat.islnk
+
+    - debug:
+        msg: "Path exists and isn't a symlink"
+      when: sym.stat.islnk is defined and sym.stat.islnk == False
+    - name: Create a Directory
+      file:
+        path: /opt/newdir1/
+        state: directory
+        mode: '0777'
+    - stat:
+        path: /opt/newdir1
+      register: p
+    - debug:
+        msg: "Path exists and is a directory"
+      when: p.stat.isdir is defined and p.stat.isdir
+    - name: Create a Directory
+      file:
+        path: /opt/newdir2/ashok
+        state: directory
+        mode: '0777'
+    - name: Create a Directory
+      file:
+        path: /opt/newdir2/ashoknew
+        state: directory
+        mode: '0765'
+    - name: Install httpd
+      yum: 
+        name: httpd
+        state: present
+    - name: start httpd
+      service:
+        name: httpd
+        state: started
+    - name: enable httpd
+      service:
+        name: httpd
+        enabled: yes
+    - name: Copy a file
+      copy:
+        src: /opt/ashok/index.html
+        dest: /var/www/html/index.html
+        owner: root
+        group: root
+        mode: '0775'
+        remote_src: yes
+    - name: COPY a file using symbolic representation
+      copy:
+        src: /opt/ashok/myfile
+        dest: /root/ashoknew
+        owner: root
+        group: root
+        mode: '0774'
+        remote_src: yes
+    - name: Copy a file and create backup
+      copy:
+        src: /var/www/html/index.html
+        dest: /opt/newdir2/ashok
+        owner: root
+        group: root
+        mode: '0777'
+        remote_src: yes
+        backup: yes
+    - name: Install packages
+      yum:
+        name: ['wget','zip','unzip','tar','bzip2','gzip','java','git']
+        state: present
+      
+    
+    - name: Insert/Update HTML surrounded by custom markers after <body> line
+      blockinfile:
+        path: /var/www/html/index.html
+        marker: "<!-- {mark} ANSIBLE MANAGED BLOCK -->"
+        insertafter: "<body>"
+        block: |
+          <h1>WELCOME TO CUSTOM WEBSERVER, TODAY WE ARE PRACTISING DEVOPS</h1>
+          <p>LAST UPDATED ON TODAY WE CAN UPDATE THIS FILE AS PER REQUREMENT</p>
+    - name: Insert/Update a file on remote servers
+      blockinfile:
+        path: /root/file1
+        insertafter: "<h1>"
+        block: |
+          MY BODY IS PRESENT IN CONDITION, TO PRACTISE MORE DEVOPS TOOLS INTHIS MONTH
+    - name: Store file into /tmp/fetched/host.example.com/tmp/somefile
+      fetch:
+        src: /root/file1
+        dest: /root/ashok/ 
+    - name: Specifying a path directly
+      fetch:
+        src: /root/file1
+        dest: /root/
+        flat: yes
+    
+    - name: Specifying a destination path
+      fetch:
+        src: /root/file1
+        dest: /root/myhome/
+        flat: yes
+    - name: Grant user  read access to a file
+      acl:
+        path: /opt/ashok/myfile
+        entity: ansadmin
+        etype: user
+        permissions: rw
+        state: present
+    - name: Sets default ACL for user on Directory
+      acl:
+        path: /opt/newdir2/ashok
+        entity: ansadmin
+        etype: user
+        permissions: rw
+        default: yes
+        state: present
+    - name: Grant user  read access to a file
+      acl:
+        path: /opt/ashok/mysecondfile
+        entity: ansadmin
+        etype: user
+        permissions: rx
+        state: present
+    - name: Removes the ACL for Joe on a specific file
+      acl:
+        path: /opt/ashok/mysecondfile
+        entity: ansadmin
+        etype: user
+        state: absent
+    - name: Create a zip archive of /path/to/foo
+      archive:
+        path: /root/file1
+        format: zip
+    - name: Create a zip archive of /path/to/foo
+      archive:
+        path: /opt/ashok/mysecondfile
+        format: zip
+    - name: Create a bz2 archive of multiple files, rooted at /path
+      archive:
+        path:
+        - /opt/ashok/myfile
+        - /opt/ashok/mysecondfile
+        dest: /opt/myhome
+        format: bz2
+    - name: Create a tar.gz archive of a single file.
+      archive:
+        path: /opt/ashok/myfile
+        dest: /opt/ashok/mysecondfile
+        format: gz
+        force_archive: true
+    - name: Extract /opt/ashok into /opt/newdir1
+      unarchive:
+        src: /opt/ashok/mysecondfile.zip
+        dest: /opt/newdir1/
+        remote_src: yes
+    - name: Unarchive a file that is already on the remote machine
+      unarchive:
+        src: /root/apache-tomcat-9.0.62.zip
+        dest: /opt/newdir1/
+        remote_src: yes
+    - name: Unarchive a file with extra options
+      unarchive:
+        src: /root/file1.zip
+        dest: /opt/newdir1/
+        remote_src: yes
+        
+    - name: Unarchive a file that needs to be downloaded (added in 2.0)
+      unarchive:
+        src: https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.62/bin/apache-tomcat-9.0.62.zip
+        dest: /opt/newdir1/
+        remote_src: yes
+
+    - name: Template a file to /etc/files.conf
+      template:
+        src: /opt/ashok/myfile
+        dest: /opt/newdir1/
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Template a file, using symbolic modes (equivalent to 0644)
+      template:
+        src: /opt/ashok/mysecondfile
+        dest: /opt/newdir2/ashok
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+    
+    - name: Ensure the default Apache port is 8080
+      lineinfile:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: '^Listen '
+        insertafter: '^#Listen '
+        line: Listen 8080
+    - name: Replace a localhost entry with our own
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.0\.1'
+        line: 127.0.0.2 myhost
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Add a line to a file if the file does not exist, without passing regexp
+      lineinfile:
+        path: /root/file1
+        line: My Line was a successfully added in a file
+        create: yes
+    - name: Validate the sudoers file before saving
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^%root ALL='
+        line: '%root ALL=(ALL) NOPASSWD: ALL'
+        validate: /usr/sbin/visudo -cf %s
+  
+    - name: Make sure group wheel is not in the sudoers configuration
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^%wheel'
+        line: '%wheel ALL=(ALL) ALL'
+    - name: Recursively find /tmp files older than 2 days
+      find:
+        paths: /tmp
+        age: 2d
+        recurse: yes
+    - name: Recursively find /root files older than 4 weeks and equal or greater than 1 megabyte
+      find:
+        paths: /root
+        age: 4w
+        size: 1m
+        recurse: yes
+    - name: Recursively find /root files with last access time greater than 3600 seconds
+      find:
+        paths: /root
+        age: 3000
+        age_stamp: atime
+        recurse: yes
+    - name: Find /var/log all directories, exclude nginx and httpd
+      find:
+        paths: /var/log
+        recurse: no
+        file_type: directory
+        excludes: 'nginx,httpd'
+    - name: safely use templated variable to run command.
+      command: cat file1 
+      register: myoutput
+    - set_fact: 
+        one_fact: something
+        other_fact: my_var
+    - name: Change the working directory to somedir.
+      command: mkdir my-new3-nine-favour-dev4
+      become: yes
+      become_user: root
+      args:
+        chdir: /opt/newdir1/
+        creates: touch newfile
+    - set_fact:
+        one_fact: yes
+        other_fact: no
+   
+    - name: Run a command that uses non-posix shell-isms 
+      raw: cat < /root/file1
+      args:
+        executable: /bin/bash
+    - name: Bootstrap a host without python2 installed
+      raw: yum install -y python2 python2-yum libselinux-python
+    - name: Run a script with arguments
+      script: /root/firstscript.sh --some-argument 1234
+    - name: Run a script only if file.txt does not exist on the remote node
+      script: /root/secondscript.sh --some-argument 1234
+      args:
+        creates: /the/created/newfile.txt
+    - name: Run a script using an executable in a  path
+      script: /root/thirdscript.sh
+    - name: Install New Packages
+      yum:
+        name: ['wget','tar','java','git','zip']
+        state: present
+    - name: Print the statement of my playbook as i mentioned
+      debug: 
+        msg: My playbook will work in a clean matter
+      when: ansible_playbook is defined
+    - name: Print the time
+      shell: /usr/bin/uptime
+      register: result
+    - debug:
+        var: result
+        verbosity: 2
+    - name: Allow everything and enable UFW
+      ufw:
+        state: enabled
+        policy: allow
+    
+    - name: Deny all access to port 53
+      ufw:
+        rule: deny
+        port: 53
+    - name: Allow port range 60000-61000
+      ufw:
+        rule: allow
+        port: 60000:61000
+        proto: tcp
+    - name: Allow all access to tcp port 80
+      ufw:
+        rule: allow
+        port: 80
+        proto: tcp
+    - name: Ensure group "somegroup" exists
+      group:
+        name: ashoknew-group
+        state: present
+    - name: Collect only facts returned by facter
+      setup:
+         gather_subset:
+           - '!all'
+           - '!any'
+           - facter
+    - name: Add the user 'johnd' with a specific uid and a primary group of 'admin'
+      user:
+        name: ansadmin
+        comment: my first user
+        uid: 1040
+        group: root
+    - name: Add the user 'james' with a bash shell, appending the group 'admins' and 'developers' to the user's groups
+      user:
+        name: ansadmin
+        shell: /bin/bash
+        groups: ashoknew-group,ansadmin
+        append: yes
+    - name: Create a 2048-bit SSH key for user jsmith in ~jsmith/.ssh/id_rsa
+      user:
+        name: ansadmin
+        generate_ssh_key: yes
+        ssh_key_bits: 2048
+        ssh_key_file: .ssh/id_rsa
