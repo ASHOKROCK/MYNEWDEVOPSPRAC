@@ -1,0 +1,287 @@
+pipeline {
+  agent any
+  
+    tools {
+      maven 'MAVEN'
+    }
+    
+    environment {
+     ENV = "PRODUCTION"
+    }
+
+  
+    triggers {
+       pollSCM '* * * * *'
+    }
+    
+    options {
+      buildDiscarder logRotator(artifactDaysToKeepStr: '2', artifactNumToKeepStr: '6', daysToKeepStr: '2', numToKeepStr: '6')
+      timeout(time: 2, unit: 'HOURS')
+    }
+
+    
+     parameters{
+                choice choices: ['MYDEV,', 'MYPRE-TEST,', 'MYTEST,', 'MYPRE-PROD,', 'MYPROD'], description: 'THIS IS OUR JENKINS PIPELINE PROJECT!!!..', name: 'MYNAME'
+                 }
+           
+   
+    stages {
+    
+        stage ('SET BUILD PROPERTIES'){
+             
+            steps{
+              buildName 'MYNEWPRO-${env.BUILD_NUMBER}'
+              buildDescription 'THIS IS MY NEW MAVEN PROJECT'
+            }
+        }
+        
+    stage('CHECKOUT SCM CODE'){
+        steps{
+            checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/ASHOKROCK/maven-employee-web-application.git']]])
+          script {
+            if (env.BRANCH_NAME == 'master') {
+              echo 'Hello from master branch and current branch name is ${env.BRANCH_NAME}'
+            } else {
+             sh "echo 'Hello we are not executing from master branch!!!!'"
+            }
+          }
+        }
+    }
+    
+    stage('BUILD PACKAGE'){
+        steps{
+            sh "mvn clean package -Dmaven.test.skip=true"
+            script {
+             if ( env.JOB_NAME == "MYCUSTOMPIPELNE"){
+               echo "Please Build My War Package and current build status is ${env.BUILD_STATUS}!!!"
+             } else {
+             sh "echo 'Hello from ${env.BUILD_NUMBER} branch!!!'"
+             }
+        }
+
+        }
+    }
+    
+    stage('SEND ONLY EMAIL'){
+        steps{
+            emailext body: '''REGARDS,
+           NAME:MR.S.ASHOKKUMAR,
+           ROLE:DEVOPSENGINEER,
+            COMPANY:MNC,
+            CLIENT:USA,
+            PROJECT:JAVABASED MAVEN PROJECT...''', recipientProviders: [requestor()], subject: 'THIS IS FROM JENKINS PIPELINE', to: 'sappoguashok462@gmail.com'
+        
+            script {
+                    if (env.BRANCH_NAME == 'master') 
+                        {
+                        echo 'Hello from master branch and current branch is ${env.BRANCH_NAME}'
+                        }
+                    if (env.BRANCH_NAME == 'null') 
+                        {
+                        echo 'Hello from null branch'
+                        }
+                    else {
+                        sh "echo 'Hello from ${env.BRANCH_NAME} branch!'"
+                        }
+                    }
+        }
+    }
+    
+    stage('SEND EMAIL'){
+        steps{
+            mail bcc: 'sappoguashok462@gmailcom,ashokrock633@gmail.com', body: '''REGARDS,
+            NAME:MR.S.ASHOKKUMAR,
+            ROLE:DEVOPSENGINEER,
+            COMPANY:MNC,
+            CLIENT:USA,
+            PROJECT:JAVABASED MAVEN PROJECT...''', cc: 'gkmaotnuivgxxlci', from: '', replyTo: '', subject: 'THIS IS FROM JENKINS PROJECT', to: 'sappoguashok462@gmailcom'
+        
+            script {
+                    if (env.HUDSON_URL.contains('8080')) {
+                        echo 'Jenkins is running on port 8080'
+                    }  
+                    else {
+                        sh "Jenkins is not running on port 8080"
+                    }
+            }
+        }
+    }
+    
+    stage('NOTIFY EVENTS'){
+        when {
+                equals(actual: currentBuild.number, expected: 23)
+            }
+        steps{
+            notifyEvents level: 'success', message: 'THIS IS MESSAGE FROM JENKNS PIPELINE PROJECT!!!..', priority: 'high', token: '8bb04b34ac15a90615398b56b9ef947f'
+        }
+    }
+    
+    stage('SEND SLACK NOTIFICATION'){
+        steps{
+            slackSend channel: '#development', color: 'good', iconEmoji: ':ghost:', message: 'THIS IS MESSAGE FROM JENKINS PIPELINE AND SENDING A SLACK EVENT NOTIFICATION AND JOB NAME IS-${env.JOB_NAME} AND BUILD  NUMBER IS-${env.BUILD_NUMBER}', teamDomain: 'mydevteam-world', tokenCredentialId: 'SLACKNEWTOKEN', username: 'new-bot-name'
+          script{
+            if (params.CHOICE_PARAM_NAME) {
+              echo "my file was copied successfully to another bucket and display name is {env.currentBuild.projectName}"
+            }
+            else {
+             echo "my file was not copied succesfully and build status is ${env.BUILD_STATUS}"
+            }
+          }
+
+        }
+    }
+    
+    	
+    stage('COPY AWS S3 FILE FROM ONE BUCKET TO ANOTHER BUCKET') {
+         when {
+                expression {
+                    return params.MYNAME
+                }
+            }
+        steps{
+                  s3Copy acl: 'PublicRead', cacheControl: '', fromBucket: 'mynewganibucket-01', fromPath: 'Resumes-20220927T135517Z-001.zip', metadatas: [''], sseAlgorithm: 'AES256', toBucket: 'mycustomfirstbucket', toPath: 'myfolder1/'  
+        }
+    }
+
+   
+    stage('SEND ANOTHER EMAIL'){
+         when {
+                expression { env.BRANCH_NAME != 'main'}
+                }
+        steps{
+            echo "Run This stage only when branch name is ${env.BRANCH_NAME}!!!"
+            emailext body: '''REGARDS,
+            NAME:MR.S.ASHOKKUMAR,
+            ROLE:DEVOPSENGINEER,
+            COMPANY:MNC,
+            CLIENT:USA,
+           PROJECT:JAVABASED MAVEN PROJECT...''', recipientProviders: [requestor()], subject: 'THIS IS FROM JENKINS PIPELINE', to: 'sappoguashok462@gmail.com'
+        }
+    }
+    
+    stage('DOCKER BUILD'){
+        steps{
+            sh "docker build -t mysecondimage:latest ."
+        script{
+            if (env.BUILD_NUMBER== "$BUILD_NUMBER"){
+             echo "my event will be notified to me"
+         }
+         else {
+           echo "MY EVENT NOT NOTIFIED TO ME and I am Requesting My Dev Team "${params.name}" to Pass My Events to Me!!!"
+         }
+       }
+
+        }
+    }
+    
+    stage('DOCKER RUN'){
+        steps{
+            sh "docker run -d --name webserver-${env.BUILD_NUMBER} -p 8092:80 mysecondimage:latest"
+        script {             
+         if (env.WORKSPACE =="/var/lib/jenkins/workspace/MYNEWPIPELINE") {
+             echo "my build was successfully complete and my build project by ${params.name}"
+         }
+         else {
+             echo "my build was not completed successfully and my job name is -'{env.JOB_NAME}' "
+
+          }
+        }
+      }
+    }
+   
+   stage('DOCKER COMMANDS'){
+       steps{
+           sh "docker image ls"
+           sh "docker inspect webserver-${env.BUILD_NUMBER}"
+           sh "docker inspect mysecondimage:latest"
+           script {
+            if (params.CHOICE_PARAM_NAME) {
+              echo "my slack notification was successfully sent and my build number is ${env.currentBuild.number}"
+             }
+
+           }
+       }
+   }
+   
+   stage('DOCKER LOGIN'){
+       
+       steps{
+           
+           sh "cat password.txt | docker login -u dsmarsnew --password-stdin"
+            
+       }
+   }
+   
+   stage('DOCKER TAG AND DOCKER PUSH'){
+       steps{
+           sh "docker tag mysecondimage:latest dsmarsnew/mysecondimage:v1"
+           sh "docker push dsmarsnew/mysecondimage:v1"
+            script{
+               if (env.BUILD_ID == '${env.BUILD_NUMBER}'){
+                   echo "my build was successfully created and build status is-'${env.currentBuild.result}'"
+               }
+               else {
+                   echo "my build was not successfully build "
+               }
+            }
+       }
+   }
+   
+   stage('AWS ECR LOGIN AND PUSH'){
+       when {
+                allOf {
+                    branch "master"
+                    environment(name: "ENV", value: "PRODUCTION")
+                    }
+            }
+       steps{
+          sh "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 479348965617.dkr.ecr.us-east-1.amazonaws.com"
+          sh "docker tag mysecondimage:latest 479348965617.dkr.ecr.us-east-1.amazonaws.com/myawsnewecr:latest"
+          sh "docker push 479348965617.dkr.ecr.us-east-1.amazonaws.com/myawsnewecr:latest"
+       }
+   }
+   
+   stage('TERRAFORM INIT'){
+       when {
+                anyOf {
+                    branch "feature"
+                    environment(name: "ENV", value: "DEVELOPMENT")
+                }
+            }
+       steps{
+           sh "terraform init"
+           sh "terraform valdate"
+           sh "terraform fmt"
+           sh "terraform plan"
+           
+       }
+   }
+   
+   stage('TERRAFORM APPLY'){
+       steps{
+           sh "terraform apply --auto-approve"
+           script{
+           if (params.BOOLEAN_PARAM_NAME) {
+            echo "my slack notification was successfully sent and my build number is ${env.currentBuild.number}"
+           }
+          }
+
+       }
+   }
+   
+   stage('ANSIBLE PLAYBOOK'){
+       when {
+                expression { env.BRANCH_NAME != 'master'}
+                }
+       steps{
+           ansiblePlaybook installation: 'ANSIBLE', inventory: 'dev.inv', playbook: 'deploy.yaml'
+           
+       }
+   }
+   
+   
+   
+   
+    }//stagesclosed
+   
+}//pipelineclosed
