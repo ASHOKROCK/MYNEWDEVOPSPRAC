@@ -1,0 +1,759 @@
+
+kubectl create service clusterip my-svc --clusterip="None" -o yaml --dry-run=client | kubectl set selector --local -f - 'environment=qa' -o yaml | kubectl create -f -
+kubectl create service -o yaml --dry-run=client-ommand creates the configuration for the Service, but prints it to stdout as YAML instead of sending it to the Kubernetes API server.
+
+editing:
+kubectl create service clusterip my-svc --clusterip="None" -o yaml --dry-run=client > /tmp/srv.yaml
+
+kubectl create --edit -f /tmp/srv.yaml
+
+
+Export the live object to a local object configuration file:
+
+kubectl get <kind>/<name> -o yaml > <kind>_<name>.yaml
+
+For subsequent object management, use replace exclusively.
+
+kubectl replace -f <kind>_<name>.yaml
+
+Updating selectors on controllers is strongly discouraged:
+
+The recommended approach is to define a single, immutable PodTemplate label used only by the controller selector with no other semantic meaning.
+
+selector:
+  matchLabels:
+      controller-selector: "apps/v1/deployment/nginx"
+template:
+  metadata:
+    labels:
+      controller-selector: "apps/v1/deployment/nginx"
+
+
+
+application/simple_deployment.yaml:
+
+apiVersion: apps/v1
+
+kind: Deployment
+
+metadata:
+
+  name: nginx-deployment
+
+spec:
+
+  selector:
+
+    matchLabels:
+
+      app: nginx
+
+  minReadySeconds: 5
+
+  template:
+
+    metadata:
+
+      labels:
+
+        app: nginx
+
+    spec:
+
+      containers:
+
+      - name: nginx
+
+        image: nginx:1.14.2
+
+        ports:
+
+        - containerPort: 80
+
+kubectl apply -f https://k8s.io/examples/application/simple_deployment.yaml
+
+Print the live configuration using kubectl get:
+
+kubectl get -f https://k8s.io/examples/application/simple_deployment.yaml -o yaml
+
+Directly update the replicas field in the live configuration by using kubectl scale. This does not use kubectl apply:
+
+kubectl scale deployment/nginx-deployment --replicas=2
+Print the live configuration using kubectl get:
+
+kubectl get deployment nginx-deployment -o yaml
+
+How to delete objects:
+
+kubectl delete -f <filename>
+
+Alternative: kubectl apply -f <directory/> --prune -l your=label
+Only use this if you know what you are doing.
+
+you can use kubectl apply to identify objects to be deleted after their configuration files have been removed from the directory.
+
+kubectl apply -f <directory/> --prune -l <labels>
+
+kubectl get -f <filename|url> -o yaml
+
+A patch is an update operation that is scoped to specific fields of an object instead of the entire object. 
+
+LABELS:
+
+kubectl get pods -l environment=production,tier=frontend
+
+kubectl get pods -l 'environment in (production),tier in (frontend)'
+
+kubectl get pods -l 'environment in (production, qa)'
+
+kubectl get pods -l 'environment,environment notin (frontend)'
+
+Labels selectors for both objects are defined in json or yaml files using maps, and only equality-based requirement selectors are supported:
+
+"selector": {
+    "component" : "redis",
+}
+
+selector:
+    component: redis
+
+Resources that support set-based requirements
+Newer resources, such as Job, Deployment, ReplicaSet, and DaemonSet, support set-based requirements as well.
+
+selector:
+  matchLabels:
+    component: redis
+  matchExpressions:
+    - {key: tier, operator: In, values: [cache]}
+    - {key: environment, operator: NotIn, values: [dev]}
+
+Check owner references on your pods:
+
+kubectl get pods -l app=nginx --output=yaml
+
+Use foreground cascading deletion:
+
+kubectl delete deployment nginx-deployment --cascade=foreground
+
+Start a local proxy session:
+
+kubectl proxy --port=8080
+Use curl to trigger deletion:
+
+curl -X DELETE localhost:8080/apis/apps/v1/namespaces/default/deployments/nginx-deployment \
+    -d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Foreground"}' \
+    -H "Content-Type: application/json"
+
+Use background cascading deletion:
+
+kubectl delete deployment nginx-deployment --cascade=background
+
+Using the Kubernetes API
+
+Start a local proxy session:
+
+kubectl proxy --port=8080
+Use curl to trigger deletion:
+
+curl -X DELETE localhost:8080/apis/apps/v1/namespaces/default/deployments/nginx-deployment \
+    -d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Background"}' \
+    -H "Content-Type: application/json"
+
+Delete owner objects and orphan dependents:
+
+kubectl delete deployment nginx-deployment --cascade=orphan
+
+Using the Kubernetes API
+
+Start a local proxy session:
+
+kubectl proxy --port=8080
+Use curl to trigger deletion:
+
+curl -X DELETE localhost:8080/apis/apps/v1/namespaces/default/deployments/nginx-deployment \
+    -d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Orphan"}' \
+    -H "Content-Type: application/json"
+
+You can check that the Pods managed by the Deployment are still running:
+
+kubectl get pods -l app=nginx
+
+The TTL seconds can be set at any time. Here are some examples for setting the .spec.ttlSecondsAfterFinished field of a Job.
+
+Controllers/job.yaml:
+
+apiVersion: batch/v1
+
+kind: Job
+
+metadata:
+
+  name: pi
+
+spec:
+
+  template:
+
+    spec:
+
+      containers:
+
+      - name: pi
+
+        image: perl:5.34.0
+
+        command: ["perl",  "-Mbignum=bpi", "-wle", "print bpi(2000)"]
+
+      restartPolicy: Never
+
+  backoffLimit: 4
+
+
+kubectl get job pi -o yaml
+
+
+kubectl describe job pi 
+
+View the standard output of one of the pods:
+
+kubectl logs $pods
+
+Cronjob:
+
+apiVersion: batch/v1
+
+kind: CronJob
+
+metadata:
+
+  name: hello
+
+spec:
+
+  schedule: "* * * * *"
+
+  jobTemplate:
+
+    spec:
+
+      template:
+
+        spec:
+
+          containers:
+
+          - name: hello
+
+            image: busybox:1.28
+
+            imagePullPolicy: IfNotPresent
+
+            command:
+
+            - /bin/sh
+
+            - -c
+
+            - date; echo Hello from the Kubernetes cluster
+
+          restartPolicy: OnFailure
+
+ReplicationController:
+
+A ReplicationController ensures that a specified number of pod replicas are running at any one time. In other words, a ReplicationController makes sure that a pod or a homogeneous set of pods is always up and available
+
+apiVersion: v1
+
+kind: ReplicationController
+
+metadata:
+
+  name: nginx
+
+spec:
+
+  replicas: 3
+
+  selector:
+
+    app: nginx
+
+  template:
+
+    metadata:
+
+      name: nginx
+
+      labels:
+
+        app: nginx
+
+    spec:
+
+      containers:
+
+      - name: nginx
+
+        image: nginx
+
+        ports:
+
+        - containerPort: 80
+
+
+kubectl apply -f https://k8s.io/examples/controllers/replication.yaml
+
+kubectl describe replicationcontrollers/nginx
+
+To list all the pods that belong to the ReplicationController in a machine readable form, you can use a command like this:
+
+pods=$(kubectl get pods --selector=app=nginx --output=jsonpath={.items..metadata.name})
+echo $pods
+
+Only a .spec.template.spec.restartPolicy equal to Always is allowed, which is the default if not specified.
+
+You can delete a ReplicationController without affecting any of its pods.
+
+Using kubectl, specify the --cascade=orphan option to kubectl delete.
+
+
+ReplicaSet:
+
+A ReplicaSet's purpose is to maintain a stable set of replica Pods running at any given time. As such, it is often used to guarantee the availability of a specified number of identical Pods.
+
+apiVersion: apps/v1
+
+kind: ReplicaSet
+
+metadata:
+
+  name: frontend
+
+  labels:
+
+    app: guestbook
+
+    tier: frontend
+
+spec:
+
+  # modify replicas according to your case
+
+  replicas: 3
+
+  selector:
+
+    matchLabels:
+
+      tier: frontend
+
+  template:
+
+    metadata:
+
+      labels:
+
+        tier: frontend
+
+    spec:
+
+      containers:
+
+      - name: php-redis
+
+        image: gcr.io/google_samples/gb-frontend:v3
+
+kubectl apply -f https://kubernetes.io/examples/controllers/frontend.yaml
+
+kubectl get rs
+
+kubectl describe rs/frontend
+
+kubectl get pods
+
+kubectl get pods frontend-b2zdv -o yaml
+
+While you can create bare Pods with no problems, it is strongly recommended to make sure that the bare Pods do not have labels which match the selector of one of your ReplicaSets.
+
+apiVersion: v1
+
+kind: Pod
+
+metadata:
+
+  name: pod1
+
+  labels:
+
+    tier: frontend
+
+spec:
+
+  containers:
+
+  - name: hello1
+
+    image: gcr.io/google-samples/hello-app:2.0
+
+
+
+---
+
+
+
+apiVersion: v1
+
+kind: Pod
+
+metadata:
+
+  name: pod2
+
+  labels:
+
+    tier: frontend
+
+spec:
+
+  containers:
+
+  - name: hello2
+
+    image: gcr.io/google-samples/hello-app:1.0
+
+kubectl apply -f https://kubernetes.io/examples/pods/pod-rs.yaml
+
+kubectl get pods
+
+The new Pods will be acquired by the ReplicaSet, and then immediately terminated as the ReplicaSet would be over its desired count.
+
+kubectl apply -f https://kubernetes.io/examples/pods/pod-rs.yaml
+
+kubectl apply -f https://kubernetes.io/examples/controllers/frontend.yaml
+
+kubectl get pods.
+
+For the template's restart policy field, .spec.template.spec.restartPolicy, the only allowed value is Always, which is the default.
+
+matchLabels:
+  tier: frontend
+
+When using the REST API or the client-go library, you must set propagationPolicy to Background or Foreground in the -d option. For example:
+
+kubectl proxy --port=8080
+curl -X DELETE  'localhost:8080/apis/apps/v1/namespaces/default/replicasets/frontend' \
+> -d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Foreground"}' \
+> -H "Content-Type: application/json"
+
+You can delete a ReplicaSet without affecting any of its Pods using kubectl delete with the --cascade=orphan option. When using the REST API or the client-go library, you must set propagationPolicy to Orphan. For example:
+
+kubectl proxy --port=8080
+curl -X DELETE  'localhost:8080/apis/apps/v1/namespaces/default/replicasets/frontend' \
+> -d '{"kind":"DeleteOptions","apiVersion":"v1","propagationPolicy":"Orphan"}' \
+> -H "Content-Type: application/json"
+
+When scaling down, the ReplicaSet controller chooses which pods to delete by sorting the available pods to prioritize scaling down pods based on the following general algorithm:
+
+Pending (and unschedulable) pods are scaled down first
+If controller.kubernetes.io/pod-deletion-cost annotation is set, then the pod with the lower value will come first.
+Pods on nodes with more replicas come before pods on nodes with fewer replicas.
+If the pods' creation times differ, the pod that was created more recently comes before the older pod (the creation times are bucketed on an integer log scale when the LogarithmicScaleDown feature gate is enabled).
+
+A ReplicaSet can also be a target for Horizontal Pod Autoscalers (HPA). That is, a ReplicaSet can be auto-scaled by an HPA.
+
+apiVersion: autoscaling/v1
+
+kind: HorizontalPodAutoscaler
+
+metadata:
+
+  name: frontend-scaler
+
+spec:
+
+  scaleTargetRef:
+
+    kind: ReplicaSet
+
+    name: frontend
+
+  minReplicas: 3
+
+  maxReplicas: 10
+
+  targetCPUUtilizationPercentage: 50
+
+kubectl apply -f https://k8s.io/examples/controllers/hpa-rs.yaml
+
+kubectl autoscale rs frontend --max=10 --min=3 --cpu-percent=50
+
+RESOURCE QUOTA:
+
+You can set quota for the total number of certain resources of all standard, namespaced resource types using the following syntax:
+
+count/<resource>.<group> for resources from non-core groups
+count/<resource> for resources from the core group
+Here is an example set of resources users may want to put under object count quota:
+
+count/persistentvolumeclaims
+count/services
+count/secrets
+count/configmaps
+count/replicationcontrollers
+count/deployments.apps
+count/replicasets.apps
+count/statefulsets.apps
+count/jobs.batch
+count/cronjobs.batch
+
+It is also possible to do generic object count quota on a limited set of resources. The following types are supported:
+
+Resource Name	Description
+configmaps	The total number of ConfigMaps that can exist in the namespace.
+persistentvolumeclaims	The total number of PersistentVolumeClaims that can exist in the namespace.
+pods	The total number of Pods in a non-terminal state that can exist in the namespace. A pod is in a terminal state if .status.phase in (Failed, Succeeded) is true.
+replicationcontrollers	The total number of ReplicationControllers that can exist in the namespace.
+resourcequotas	The total number of ResourceQuotas that can exist in the namespace.
+services	The total number of Services that can exist in the namespace.
+services.loadbalancers	The total number of Services of type LoadBalancer that can exist in the namespace.
+services.nodeports	The total number of Services of type NodePort that can exist in the namespace.
+secrets	The total number of Secrets that can exist in the namespace.
+
+Quota Scopes:
+
+Scope	Description
+Terminating	Match pods where .spec.activeDeadlineSeconds >= 0
+NotTerminating	Match pods where .spec.activeDeadlineSeconds is nil
+BestEffort	Match pods that have best effort quality of service.
+NotBestEffort	Match pods that do not have best effort quality of service.
+PriorityClass	Match pods that references the specified priority class.
+CrossNamespacePodAffinity	Match pods that have cross-namespace pod (anti)affinity terms.
+The BestEffort scope restricts a quota to tracking the following resource:
+
+pods
+The Terminating, NotTerminating, NotBestEffort and PriorityClass scopes restrict a quota to tracking the following resources:
+
+pods
+cpu
+memory
+requests.cpu
+requests.memory
+limits.cpu
+limits.memory
+
+Note that you cannot specify both the Terminating and the NotTerminating scopes in the same quota, and you cannot specify both the BestEffort and NotBestEffort scopes in the same quota either.
+
+
+scopeSelector:
+    matchExpressions:
+      - scopeName: PriorityClass
+        operator: In
+        values:
+          - middle
+
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: pods-high
+  spec:
+    hard:
+      cpu: "1000"
+      memory: 200Gi
+      pods: "10"
+    scopeSelector:
+      matchExpressions:
+      - operator : In
+        scopeName: PriorityClass
+        values: ["high"]
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: pods-medium
+  spec:
+    hard:
+      cpu: "10"
+      memory: 20Gi
+      pods: "10"
+    scopeSelector:
+      matchExpressions:
+      - operator : In
+        scopeName: PriorityClass
+        values: ["medium"]
+- apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: pods-low
+  spec:
+    hard:
+      cpu: "5"
+      memory: 10Gi
+      pods: "10"
+    scopeSelector:
+      matchExpressions:
+      - operator : In
+        scopeName: PriorityClass
+        values: ["low"]
+
+kubectl create -f ./quota.yml
+
+kubectl describe quota
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: high-priority
+spec:
+  containers:
+  - name: high-priority
+    image: ubuntu
+    command: ["/bin/sh"]
+    args: ["-c", "while true; do echo hello; sleep 10;done"]
+    resources:
+      requests:
+        memory: "10Gi"
+        cpu: "500m"
+      limits:
+        memory: "10Gi"
+        cpu: "500m"
+  priorityClassName: high
+
+Apply it with kubectl create.
+
+kubectl create -f ./high-priority-pod.yml.
+
+kubectl describe quota.
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: disable-cross-namespace-affinity
+  namespace: foo-ns
+spec:
+  hard:
+    pods: "0"
+  scopeSelector:
+    matchExpressions:
+    - scopeName: CrossNamespaceAffinity
+
+If operators want to disallow using namespaces and namespaceSelector by default, and only allow it for specific namespaces, they could configure CrossNamespaceAffinity as a limited resource by setting the kube-apiserver flag --admission-control-config-file to the path of the following configuration file:
+
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+- name: "ResourceQuota"
+  configuration:
+    apiVersion: apiserver.config.k8s.io/v1
+    kind: ResourceQuotaConfiguration
+    limitedResources:
+    - resource: pods
+      matchScopes:
+      - scopeName: CrossNamespaceAffinity
+
+Kubectl supports creating, updating, and viewing quotas:
+
+kubectl create namespace myspace
+cat <<EOF > compute-resources.yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-resources
+spec:
+  hard:
+    requests.cpu: "1"
+    requests.memory: 1Gi
+    limits.cpu: "2"
+    limits.memory: 2Gi
+    requests.nvidia.com/gpu: 4
+EOF
+
+kubectl create -f ./compute-resources.yaml --namespace=myspace
+cat <<EOF > object-counts.yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: object-counts
+spec:
+  hard:
+    configmaps: "10"
+    persistentvolumeclaims: "4"
+    pods: "4"
+    replicationcontrollers: "20"
+    secrets: "10"
+    services: "10"
+    services.loadbalancers: "2"
+EOF
+
+kubectl create -f ./object-counts.yaml --namespace=myspace
+kubectl get quota --namespace=myspace
+kubectl describe quota compute-resources --namespace=myspace
+kubectl describe quota object-counts --namespace=myspace
+
+Kubectl also supports object count quota for all standard namespaced resources using the syntax count/<resource>.<group>:
+
+kubectl create namespace myspace
+kubectl create quota test --hard=count/deployments.apps=2,count/replicasets.apps=4,count/pods=3,count/secrets=4 --namespace=myspace
+kubectl create deployment nginx --image=nginx --namespace=myspace --replicas=2
+kubectl describe quota --namespace=myspace.
+
+Limit Priority Class consumption by default:
+
+It may be desired that pods at a particular priority, eg. "cluster-services", should be allowed in a namespace, if and only if, a matching quota object exists.
+
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+- name: "ResourceQuota"
+  configuration:
+    apiVersion: apiserver.config.k8s.io/v1
+    kind: ResourceQuotaConfiguration
+    limitedResources:
+    - resource: pods
+      matchScopes:
+      - scopeName: PriorityClass
+        operator: In
+        values: ["cluster-services"]
+
+apiVersion: v1
+
+kind: ResourceQuota
+
+metadata:
+
+  name: pods-cluster-services
+
+spec:
+
+  scopeSelector:
+
+    matchExpressions:
+
+      - operator : In
+
+        scopeName: PriorityClass
+
+        values: ["cluster-services"]
+
+kubectl apply -f https://k8s.io/examples/policy/priority-class-resourcequota.yaml -n kube-system
+
+Changing the CPU Manager Policy:
+
+The CPU Manager policy is set with the --cpu-manager-policy kubelet flag or the cpuManagerPolicy field in KubeletConfiguration. There are two supported policies:
+
+none: the default policy.
+static: allows pods with certain resource characteristics to be granted increased CPU affinity and exclusivity on the node
+
+Drain the node.
+Stop kubelet.
+Remove the old CPU manager state file. The path to this file is /var/lib/kubelet/cpu_manager_state by default. This clears the state maintained by the CPUManager so that the cpu-sets set up by the new policy won’t conflict with it.
+Edit the kubelet configuration to change the CPU manager policy to the desired value.
+Start kubelet.
+
+JOBS:
+
+To list all the Pods that belong to a Job in a machine readable form, you can use a command like this:
+
+pods=$(kubectl get pods --selector=job-name=pi --output=jsonpath='{.items[*].metadata.name}')
+echo $pods
