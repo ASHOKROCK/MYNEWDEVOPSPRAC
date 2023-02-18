@@ -1,0 +1,134 @@
+node {
+    
+    stage('SCM CODE'){
+        //this is initializing git repository
+        checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/ASHOKROCK/maven-web-application.git']]])
+    }
+    
+    stage(" Maven Clean Package"){
+        //this is used for build package to war...
+      def mavenHome ="/opt/apache-maven-3.8.6"
+      def mavenCMD = "${mavenHome}/bin/mvn"
+      sh "${mavenCMD} clean package"
+    }
+stage(" Sonarcode Analysis"){
+        //this is used for analysis of source code...
+      def mavenHome ="/opt/apache-maven-3.8.6"
+      def mavenCMD = "${mavenHome}/bin/mvn"
+      sh "${mavenCMD}   sonar:sonar"
+    }
+
+stage('SEND EMAIL NOTIFICATON'){
+        //this is to send email notfication to team of prod in my company..
+        emailext body: '''REAGRDS,
+        MR.S.ASHOK KUMAR,
+        ROLE: DEVOPSENGINEER,
+        
+        LOCATION: HYDERABAD, 
+        PROJECT:MAVEN-WEB-APPL
+        TEAM: DEV-TEAM. COMPANY: MNC, ICATION,
+        CLIENT: USA,
+
+        ''', replyTo: 'dsmarsnew2022@gmail.com', subject: 'JAVAPROJECT', to: 'sappoguashok462@gmail.com'
+    }
+    
+    stage('PRINT A MESSAGE'){
+        //this is just sample message to print...
+        echo 'THIS IS JAVAWEBBASEDMAVEN PROJECT'
+    }
+    
+    stage('SEND NOTIFY EVENTS'){
+        //this is used to send notificatons to dev-team...
+        notifyEvents message: 'THIS IS MESSAGE FROM DEV_TEAM TO FINSH OUR JAVA PROJECT....', priority: 'high', title: '$BUILD_TAG - MAVEN_WEB_APPLICATION', token: '04a6a2b3d9950b2d98dac0fd41747975'
+    } 
+    
+    stage('SEND ANOTHER EMAIL NOTIFICATION'){
+        //this is another email notifcaton to send from dev-team to prod-team...
+        mail bcc: 'dsmarsnew2022@gmail.com,sappoguashok462@gmail.com', body: '''REAGRDS,
+       MR.S.ASHOK KUMAR,
+       ROLE: DEVOPSENGINEER,
+       COMPANY: MNC,
+       PROJECT:MAVEN-WEB-APPLICATION,
+       CLIENT: USA,
+       LOCATION: HYDERABAD,
+       TEAM: DEV-TEAM.''', cc: 'gkmaotnuivgxxlci', from: '', replyTo: '', subject: 'JAVABASEDMAVENPROJECT', to: 'sappoguashok462@gmail.com'
+    }
+    
+    stage('SEND SLACK NOTIFICATION'){
+        //this is used to send slack notificaton...
+        slackSend channel: '#development', 
+        color: 'good', 
+        iconEmoji: ':ghost:', 
+        message: 'THIS IS MESSAGE FROM JENKINS SERVER TO SLACK ABOUT PROJECT BUILD...', 
+        teamDomain: 'mydevteam-world', 
+        tokenCredentialId: 'SLACKNEWTOKEN', 
+        username: 'jenkins'
+    }
+    
+    stage('START SHELL SCRIPT'){
+        //this is normal shellscript...
+        sh '''touch ashokfile1
+        echo "WELCOME TO JENKINS TOOL" >ashokfile1
+        cat ashokfile1'''
+    }
+    
+    stage('DOCKER BUILD'){
+        //this is to build a docker image.....
+        sh "docker build -t my-new-image ."
+    }
+    
+    stage('DOCKER RUN'){
+        //this is to run a docker container...
+        sh " docker run -d --name webserver-3 -p 8084:80 my-new-image "
+    }
+    
+    stage('DOKCER INSPECT'){
+        //this is used for docker commands...
+        sh "docker inspect my-new-image"
+        sh "docker ps -a"
+        sh "docker inspect webserver-3"
+        sh "docker image ls"
+    }
+    
+    stage('DOCKER LOGIN'){
+        //this is used to login to docker...
+      sh "cat password.txt | docker login -u  ASHOKCLOUD2023 --password-stdin"
+    }
+    
+    stage('DOCKER TAG'){
+        //this is used for tagging a image to docker ..
+        sh "docker tag my-new-image:latest   ASHOKCLOUD2023/my-new-image:v1"
+    }
+    
+    stage('DOCKER PUSH'){
+        //this is used to send a docker image to dockerhub repository...
+        sh "docker push ASHOKCLOUD2023/my-new-image:v1"
+    }
+    
+    stage('ANSIBLE-SERVER'){
+        //this is used to send a ansible playbook on remote-server of ansible node...
+        ansiblePlaybook credentialsId: 'ANSIBLE-SERVER', disableHostKeyChecking: true, installation: 'ansible-2', inventory: 'dev.inv', playbook: 'deploy-docker.yaml'
+    }
+    
+    stage('TERRAFORM PERFORM'){
+        //this is used to perform a terraform coomands...
+        sh "terraform init"
+        sh "terraform validate"
+    }
+    
+    stage('TERRAFORM PLAN'){
+        //this is used to perform whch operations are doing with a terraform...
+        sh "terraform plan"
+    }
+    
+    stage('TERRAFORM APPLY'){
+        //this is used to execute a terraform apply..
+        sh "terraform apply --auto-approve"
+    }
+    
+    stage('TERRAFORM SHOW'){
+        //this is used to show terraform status..
+        sh "terraform show"
+    }
+}//nodeclosed
+
