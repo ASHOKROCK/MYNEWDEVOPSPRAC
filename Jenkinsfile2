@@ -1,0 +1,378 @@
+pipeline {
+    agent any
+      
+      parameters {
+        choice choices: ['master', 'main', 'feature'], description: 'THIS BUILD IS PARAMETERIZED..', name: 'Branch'
+     }
+     
+     tools {
+      maven 'MAVEN'
+     }
+     
+    triggers {
+       pollSCM '* * * * *'
+    }
+
+     
+     options {
+      buildDiscarder logRotator(artifactDaysToKeepStr: '1', artifactNumToKeepStr: '5', daysToKeepStr: '1', numToKeepStr: '5')
+     }
+
+     
+    environment {
+        ENV = "testing"
+        TAG_NAME = "dev-team"
+    }
+    
+   
+    stages{
+         
+         stage('SCM CODE CHECK'){
+             when { expression { true } }
+             steps{
+                 //this is used to get git repo to mypipeline and access a application
+                 echo "pulling a source code repo into pipeline"
+                 checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/ASHOKROCK/maven-web-application.git']]])
+                 echo "get info from scm code to my repo line and build with parameters ${params.Branch}"
+                 
+                 script {
+                 if (env.BRANCH_NAME == "master"){
+                     echo "get a source code grom git repo and access it!!.."
+                 }
+                 else{
+                     echo "The accessing repo will not have any application website links!!.."
+                 }
+                }
+             }
+             
+             post {
+               success {
+                 echo "triggered a scm code success"
+               }
+            
+               failure {
+                 echo "Triggered post-failure"
+               }
+               unstable {
+                 echo "Triggered post-unstable"
+              }
+             }       
+         }
+         
+         stage('BUILD PACKAGE'){
+         when { expression { true } }
+             steps{
+                 //this is building a war archive using with a maven build tool
+                 echo "building a maven war archive file"
+                  sh 'mvn -Dmaven.test.failure.ignore=true clean package'
+                 
+                 script {
+                 if (env.BUILD_ID == "${env.BUILD_NUMBER}"){
+                     echo "build a maven based war archive file"
+                 }
+                 else{
+                     echo "Don't Build a maven based archive file"
+                 }
+             }
+             
+            }
+             post {
+                success {
+                  echo "trigerred a maven build success"
+                 }
+              }
+         }
+         
+        stage("SEND EMAIL NOTIFICATION") {
+            steps{
+                //sending a mail notification to teams
+                echo "sending a pipeline info to teams"
+                        emailext body: '''REGARDS,
+                         MR.S.ASHOKKUMAR,
+                         ROLE:DEVOPSENGINEER,
+                         COMPANY:MNC,
+                         PROJECT:JAVAPROJECT,
+                         CLIENT:USA.''', subject: 'THIS PROJECT BELONGS TO JAVA BASED PROJECT..', to: 'sappoguashok462@gmail.com,dsmarsnew2022@gmail.com'
+
+                script {
+                    if (env.BRANCH_NAME == 'master') 
+                        {
+                        echo 'Hello from master branch and build url is "${env.BUILD_URL}"'
+                        }
+                    if (env.BRANCH_NAME == 'null') 
+                        {
+                        echo 'Hello from null branch'
+                        }
+                    else {
+                        sh "echo 'Hello from ${env.BRANCH_NAME} branch!'"
+                        }
+                    }
+
+                
+            }
+        }
+        
+            stage('BUILDING A IMAGE FROM DOCKER FILE'){
+                steps{
+                    //this is building a my new mage from docker file
+                    echo "builing a new image from Dockerfile"
+                    sh "docker build -t mycustomnewimage:v1 ."
+        
+                  script {
+                      if (env.WORKSPACE == "/var/lib/jenkins/workspace"){
+                         echo "building  a image from dockerfile"
+                       }
+                      else{
+                        echo "don't build a image"
+                         }
+                      }
+                }
+
+            }
+            
+            stage('CONFIGURING A SOME DOCKER COMMANDS'){
+                steps{
+                    //this is used to configure or write a some docker commands
+                    echo "writing a some docker commandsn my pipeline and checking a docker images are available"
+                    sh "docker image ls"
+                    sh "docker run -d --name webnewserver-11 -p 8041:80 mycustomnewimage:v1"
+                    sh "docker inspect mycustomnewimage:v1"
+                    sh "docker ps -a"
+                    
+                    
+               script {
+                  if (env.JOB_NAME == "MYNEWWALLMART"){
+                    echo "building a docker commands and container"
+                  }
+                  else{
+                    echo "Not Building a Docker Container "
+                   }
+                }
+
+
+                }
+            }
+            
+                stage('SENDING A SLACK NOTIFICATION TO TEAMS '){
+                    steps{
+                        //this is used to send slack notifications to teams
+                        echo "sending a slck notification about a pipeline project"
+                        slackSend channel: '#development', color: 'good', iconEmoji: ':ghost:', message: 'THIS MESSAGE FROM JENKINS REGARDING ABOUT SLACK NOTIFY ABOUT PIPELINE PRO!!..', teamDomain: 'mydevteam-world', tokenCredentialId: 'SLACK-TOKEN', username: 'new-bot-name'
+                       
+                       script {
+                         if (env.WORKSPACE == "/var/lib/jenkins/workspace"){
+                           echo "if build got success and send a slack notify to dev-teams"
+                          }
+                          else{
+                            echo "if build fails send slack notify to teams"
+                          }
+                        }
+    
+                      }
+                }
+               
+               stage('CONFIGURE A TERRAFORM COMMANDS'){
+                   steps{
+                       //configuring a terraform commands
+                       echo "building a terraform commands"
+                               sh "terraform init"
+                               sh "terraform fmt"
+                               sh "terraform validate"
+                               sh "terraform plan"
+                               
+                  script {
+                       if (env.HUDSON_URL.contains('8080')) {
+                          echo 'Jenkins is running on port 8080'
+                       }  
+                       else {
+                         sh "Jenkins is not running on port 8080"
+                       }
+                     }
+
+                   }
+               }
+               
+               stage('CONFIGURING A TERRAFORM APPLY'){
+                 when {
+                     expression { env.BRANCH_NAME != 'main'}
+                }
+                   steps{
+                       //this is used to conform a terraform 
+                       echo "configuring a my iaac code as a new one to apply command"
+                               sh "terraform apply --auto-approve"
+                               sh "terraform show"
+                               
+                               
+
+                   }
+               }
+               
+                 stage('LOGGING TO A DOCKER AND PUSHING A DOCKER CONTAINER '){
+                     when {
+                        environment(name: "ENV", value: "testing")
+                     }
+                     steps{
+                         //this is logging to a docker container
+                         echo "building a docker conatiner and logging to it"
+                          sh "cat password.txt | docker login -u dsmarsnew --password-stdin"
+                          
+                         }
+                 }
+                 
+                stage('BUILDING A TAG TO DOCKER TAG'){
+                    when {
+                       equals(actual: currentBuild.number, expected: "${env.BUILD_NUMBER}")
+                    }
+                    steps{
+                        //this is used to build a docker tag
+                        echo "building a tag to docker"
+                        sh "docker tag mycustomnewimage:v1 dsmarsnew/mycustomnewimage:latest"
+                    }
+                }
+                
+                stage('BUILDING A NEW DOCKER COMMANDS'){
+                    steps{
+                        //this is build to docker push
+                        echo "building a image and push a image to docker public repository"
+                        sh "docker image ls"
+                        sh "docker pull nginx:alpine"
+                        sh "docker run -d --name mywebapp-7 -v myvol:/usr/share/nginx/html --network mynet -p 9097:80 nginx:alpine"
+                        sh "docker ps -a"
+                        sh "docker images"
+                        echo "pushed image successfully"
+                        
+                      script {    
+                        if(env.CI == "true"){
+                            echo "building a docker image and push to docker repo"
+                        }
+                        else{
+                            echo "Not pushing to docker repo"
+                        }
+                      }
+                    }
+                }
+                
+                stage('WRTE ASAMPLE SHELL SCRIPT'){
+                    steps{
+                        //this is my sample shell script
+                        echo "write a sample code shell script"
+                        sh '''#!/bin/bash
+                        echo "printing a new message to a slack pipeline"
+                        curl -X POST --data-urlencode "payload={\\"channel\\": \\"#development\\", \\"username\\": \\"webhookbot\\", \\"text\\": \\"This is posted to #development and comes from a bot named webhookbot and regarding about to a jenkins pipeline project.\\", \\"icon_emoji\\": \\":ghost:\\"}" https://hooks.slack.com/services/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
+                        echo "sending a notification to a slack"'''
+
+                        
+                        script {
+                            if (env.EXECUTOR_NUMBER == "2"){
+                                echo "Sending a slack notify to teams and current build status is '${env.currentBuild.number}'"
+                            }
+                            else{
+                                echo "Not sending to a slack to dev-teams"
+                            }
+                        }
+
+                    }
+                }
+                
+                
+                stage('CONFIGURING AND Logging into AWS ECR') {
+                     steps{
+                         //this is configuring a aws ecr
+                         echo "configuing and logging to a ecr"
+                         sh "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 584315761995.dkr.ecr.us-east-1.amazonaws.com"
+                         
+                         script{
+                         if(env.JOB_URL == "http://50.17.2.121:8080/job/MYNEWWALLMART/"){
+                             echo "building and logging to a aws ecr"
+                         }               
+                         else{
+                             echo "don't login to a aws ecr"
+                         }
+                         }
+                     }
+                 }
+                 
+                          stage('SEND NOTIFY EVENTS TO DEV_TEAMS'){
+                              steps{
+                                  //this is used to send notify my events
+                                  echo "sending a my events to dev-teams"
+                                  notifyEvents level: 'success', message: 'THIS IS MESSAGE FROM JENKINS TO A PIPELINE PROJECT!!..', priority: 'high', token: '7e55f43ccdea4fe765ee6503e12c080f'
+                                 
+                                 script{ 
+                                  if(env.TAG_NAME == "dev-team"){
+                                      echo "send notify events to dev-teams"
+                                  }             
+                                  else{
+                                      echo "Don't send to dev-teams"
+                                  }
+                                 }
+                              }
+                          }
+                          
+                    stage('STORE ARTIFACTS TO S3'){
+                       
+                        steps{
+                            //storing a artifacts to s3 bucket
+                            echo "storing a artfact to s3 bucket"
+                                         s3Upload consoleLogLevel: 'INFO', dontSetBuildResultOnFailure: false, dontWaitForConcurrentBuildCompletion: true, entries: [[bucket: 'mycustomnewawsbuc', excludedFile: '**', flatten: true, gzipFiles: false, keepForever: false, managedArtifacts: false, noUploadOnFailure: false, selectedRegion: 'us-east-1', showDirectlyInBrowser: false, sourceFile: '**/*.war', storageClass: 'STANDARD', uploadFromSlave: false, useServerSideEncryption: false]], pluginFailureResultConstraint: 'FAILURE', profileName: 'my-dev', userMetadata: []
+                            
+                             }
+                    }
+                    
+                    stage('SEND ARTIFACTS TO S3'){
+                        steps{
+                            //sending a artifacts to s3 bucket
+                            echo "sending a artifacts to s3 buc"
+                            s3CopyArtifact buildSelector: lastSuccessful(), excludeFilter: '**', filter: '**/*.war', flatten: false, optional: false, projectName: 'MYFLIPKARTPRO', target: ''
+                           
+                           script{
+                               if (env.BUILD_ID == "${env.BUILD_NUMBER}"){
+                                   echo "building and sending a artifacts to s3 buc"
+                               }
+                               else{
+                                   echo "don't send artifacts to s3 buc"
+                               }
+                           }
+                        }
+                    }
+                    
+                         stage('Pushing a image  to AWS ECR') {
+                             steps{
+                                 //pushing a image to aws ecr
+                                 echo "sending a docker image to aws ecr"
+                                 sh "docker tag  mycustomnewimage:v1 584315761995.dkr.ecr.us-east-1.amazonaws.com/mynewcustomecr:latest"
+                                 sh "docker push 584315761995.dkr.ecr.us-east-1.amazonaws.com/mynewcustomecr:latest"
+
+                             }
+                         }
+                         
+                   stage('DEPLOY TO ARCHIVE FILE TO TOMCAT SERVER'){
+                        steps{
+                           //deploying a generated artifact to tomcat server
+                           echo "deploying a generated artifact to tomcat app"
+                           deploy adapters: [tomcat9(credentialsId: 'TOMCAT-NEW', path: '', url: 'http://54.161.194.222:8084')], contextPath: null, onFailure: false, war: '**/*.war'
+                        
+                        script{
+                          if(env.JOB_NAME == "MYNEWWALLMART"){
+                            echo "deploy a war file to tomcat and current result is '${env.currentBuild.result}'"
+                           }
+                          else{
+                            echo "Don't send a artifact file to tomcat app"
+                           }
+                        }
+                    }
+                }
+
+                         
+                        stage('DEPLOY A ANSIBLE PLAYBOOKS'){
+                            steps{
+                                ansiblePlaybook colorized: true, credentialsId: 'MYSSHREMOTE', disableHostKeyChecking: true, installation: 'ANSIBLE', inventory: 'dev.inv', playbook: 'deploy-docker.yaml'
+                            }
+                        }
+                        
+                       
+                    
+         
+     }//stagesclosed
+
+}//pipelineclosed
